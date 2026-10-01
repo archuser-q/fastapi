@@ -4,6 +4,7 @@ class Settings(BaseSettings):
     app_name: str = "THO NHANH API"
     debug: bool = True
     cors_origins: list[str] = []
+    database_url: str
 
     model_config = SettingsConfigDict(env_file=".env")
 
