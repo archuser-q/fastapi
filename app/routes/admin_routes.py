@@ -81,3 +81,61 @@ def update_worker_verification(
     db: Session = Depends(get_db),
 ):
     return admin_controller.update_worker_verification(db, worker_id, data)
+
+
+# ---------- Dashboard (trang Overview) ----------
+
+
+@router.get("/dashboard/overview")
+def get_dashboard_overview(db: Session = Depends(get_db)):
+    return admin_controller.get_dashboard_overview(db)
+
+
+@router.get("/dashboard/stats")
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    return admin_controller.get_dashboard_stats(db)
+
+
+@router.get("/dashboard/revenue-chart")
+def get_dashboard_revenue_chart(
+    months: int = Query(9, ge=1, le=24),
+    db: Session = Depends(get_db),
+):
+    return admin_controller.get_dashboard_revenue_chart(db, months)
+
+
+@router.get("/dashboard/service-breakdown")
+def get_dashboard_service_breakdown(db: Session = Depends(get_db)):
+    return admin_controller.get_dashboard_service_breakdown(db)
+
+
+@router.get("/dashboard/worker-activities")
+def get_dashboard_worker_activities(
+    limit: int = Query(8, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    return admin_controller.get_dashboard_worker_activities(db, limit)
+
+
+@router.get("/dashboard/top-workers")
+def get_dashboard_top_workers(
+    limit: int = Query(5, ge=1, le=20),
+    db: Session = Depends(get_db),
+):
+    return admin_controller.get_dashboard_top_workers(db, limit)
+
+
+@router.get("/dashboard/recent-complaints")
+def get_dashboard_recent_complaints(
+    limit: int = Query(5, ge=1, le=20),
+    db: Session = Depends(get_db),
+):
+    return admin_controller.get_dashboard_recent_complaints(db, limit)
+
+
+@router.get("/dashboard/recent-orders")
+def get_dashboard_recent_orders(
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    return admin_controller.get_dashboard_recent_orders(db, limit)
