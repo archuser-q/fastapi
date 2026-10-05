@@ -22,6 +22,7 @@ DROP TABLE
     social_accounts,
     users
 CASCADE;
+
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     phone VARCHAR(15) UNIQUE NOT NULL,
@@ -281,3 +282,27 @@ CREATE INDEX idx_messages_order ON messages(order_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_location_logs_worker ON worker_location_logs(worker_id);
 
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+ALTER TABLE worker_profiles
+    ADD COLUMN IF NOT EXISTS location geography(Point, 4326);
+
+CREATE OR REPLACE FUNCTION sync_worker_location() RETURNS trigger AS $$
+BEGIN
+    IF NEW.current_latitude IS NULL OR NEW.current_longitude IS NULL THEN
+        NEW.location := NULL;
+        NEW.geohash := NULL;
+    ELSE
+        NEW.location := ST_SetSRID(
+            ST_MakePoint(NEW.current_longitude, NEW.current_latitude), 4326
+        )::geography;
+        NEW.geohash := ST_GeoHash(NEW.location::geometry, 7);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+ 
+DROP TRIGGER IF EXISTS trg_sync_worker_location ON worker_profiles;
+CREATE TRIGGER trg_sync_worker_location
+    BEFORE INSERT OR UPDATE OF current_latitude, current_longitude ON worker_profiles
+    FOR EACH ROW EXECUTE FUNCTION sync_worker_location();
