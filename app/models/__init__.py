@@ -2,6 +2,7 @@ from app.models.matching import MatchingConfig
 from app.models.order import (
     Complaint,
     Order,
+    OrderExtraQuote,
     OrderOffer,
     OrderStatusHistory,
     Review,

@@ -116,3 +116,15 @@ class OrderOffer(Base):
     status: Mapped[str] = mapped_column(String(20), server_default="sent")
     sent_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     responded_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+class OrderExtraQuote(Base):
+    __tablename__ = "order_extra_quotes"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    worker_id: Mapped[int] = mapped_column(ForeignKey("worker_profiles.user_id"))
+    description: Mapped[str] = mapped_column(Text)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 0))
+    status: Mapped[str] = mapped_column(String(20), server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime)
