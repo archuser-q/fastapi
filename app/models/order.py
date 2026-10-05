@@ -104,3 +104,15 @@ class Complaint(Base):
     handled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+class OrderOffer(Base):
+    __tablename__ = "order_offers"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    worker_id: Mapped[int] = mapped_column(ForeignKey("worker_profiles.user_id"))
+    match_score: Mapped[Decimal | None] = mapped_column(Numeric(8, 5))
+    distance_km: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    status: Mapped[str] = mapped_column(String(20), server_default="sent")
+    sent_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime)

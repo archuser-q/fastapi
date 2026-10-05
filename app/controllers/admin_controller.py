@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
@@ -37,6 +36,14 @@ from app.schemas.admin import (
 )
 from app.schemas.user import UserOut
 from app.schemas.worker import WorkerDocumentOut, WorkerProfileOut
+from app.utils.dates import (
+    add_months,
+    day_start,
+    month_start,
+    now_vn,
+    percent_change,
+    prev_window,
+)
 from app.utils.pagination import paginate
 from app.utils.response import paginated, success
 
@@ -173,8 +180,6 @@ def update_worker_verification(db: Session, worker_id: int, data: WorkerVerifica
 
 # ---------- Dashboard (trang Overview) ----------
 
-VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
-
 ACTIVITY_ACTIONS = {
     "accepted": "đã nhận đơn",
     "on_the_way": "đang trên đường đến",
@@ -184,35 +189,8 @@ ACTIVITY_ACTIONS = {
 }
 
 
-def _now() -> datetime:
-    return datetime.now(VN_TZ).replace(tzinfo=None)
-
-
-def _day_start(d: datetime) -> datetime:
-    return d.replace(hour=0, minute=0, second=0, microsecond=0)
-
-
-def _month_start(d: datetime) -> datetime:
-    return _day_start(d).replace(day=1)
-
-
-def _add_months(d: datetime, n: int) -> datetime:
-    total = d.year * 12 + d.month - 1 + n
-    return d.replace(year=total // 12, month=total % 12 + 1, day=1)
-
-
-def _prev_window(now: datetime, cur_start: datetime, prev_start: datetime):
-    return prev_start, min(prev_start + (now - cur_start), cur_start)
-
-
-def _percent(cur, prev) -> float | None:
-    if not prev:
-        return None
-    return round((cur - prev) / prev * 100, 1)
-
-
 def _growth(cur: int, prev: int) -> GrowthStat:
-    return GrowthStat(value=cur, previous=prev, change_percent=_percent(cur, prev))
+    return GrowthStat(value=cur, previous=prev, change_percent=percent_change(cur, prev))
 
 
 def _revenue(db: Session, start: datetime, end: datetime) -> int:
@@ -242,19 +220,19 @@ def _rating(db: Session, start: datetime, end: datetime):
 
 
 def _stats(db: Session, now: datetime) -> DashboardStats:
-    month_start = _month_start(now)
-    next_month = _add_months(month_start, 1)
-    prev_month = _add_months(month_start, -1)
-    pm_start, pm_end = _prev_window(now, month_start, prev_month)
+    m_start = month_start(now)
+    next_month = add_months(m_start, 1)
+    prev_month = add_months(m_start, -1)
+    pm_start, pm_end = prev_window(now, m_start, prev_month)
 
     revenue = _growth(
-        _revenue(db, month_start, next_month),
+        _revenue(db, m_start, next_month),
         _revenue(db, pm_start, pm_end),
     )
 
-    today = _day_start(now)
+    today = day_start(now)
     yesterday = today - timedelta(days=1)
-    y_start, y_end = _prev_window(now, today, yesterday)
+    y_start, y_end = prev_window(now, today, yesterday)
     orders_today = _growth(
         _order_count(db, today, today + timedelta(days=1)),
         _order_count(db, y_start, y_end),
@@ -273,8 +251,8 @@ def _stats(db: Session, now: datetime) -> DashboardStats:
         total_approved=sum(counts.values()),
     )
 
-    score, review_count = _rating(db, month_start, next_month)
-    prev_score, _ = _rating(db, prev_month, month_start)
+    score, review_count = _rating(db, m_start, next_month)
+    prev_score, _ = _rating(db, prev_month, m_start)
     satisfaction = SatisfactionStat(
         score=score,
         previous=prev_score,
@@ -291,8 +269,8 @@ def _stats(db: Session, now: datetime) -> DashboardStats:
 
 
 def _revenue_chart(db: Session, now: datetime, months: int) -> list[MonthlyPoint]:
-    this_month = _month_start(now)
-    first = _add_months(this_month, -(months - 1))
+    this_month = month_start(now)
+    first = add_months(this_month, -(months - 1))
 
     bucket = func.date_trunc("month", Order.completed_at)
     rows = db.execute(
@@ -304,7 +282,7 @@ def _revenue_chart(db: Session, now: datetime, months: int) -> list[MonthlyPoint
 
     points = []
     for i in range(months):
-        m = _add_months(first, i)
+        m = add_months(first, i)
         revenue, orders = data.get(m, (0, 0))
         points.append(
             MonthlyPoint(
@@ -328,7 +306,7 @@ def _service_breakdown(db: Session, now: datetime) -> list[ServiceShare]:
         .join(Service, Service.id == Order.service_id)
         .join(cat, cat.id == Service.category_id)
         .join(top, top.id == func.coalesce(cat.parent_id, cat.id))
-        .where(Order.created_at >= _month_start(now), Order.status != "cancelled")
+        .where(Order.created_at >= month_start(now), Order.status != "cancelled")
         .group_by(top.id, top.name)
         .order_by(count.desc())
     ).all()
@@ -359,7 +337,7 @@ def _worker_activities(db: Session, now: datetime, limit: int) -> list[WorkerAct
         .join(Order, Order.id == OrderStatusHistory.order_id)
         .join(User, User.id == Order.worker_id)
         .where(
-            OrderStatusHistory.created_at >= _day_start(now),
+            OrderStatusHistory.created_at >= day_start(now),
             OrderStatusHistory.status.in_(ACTIVITY_ACTIONS.keys()),
         )
         .order_by(OrderStatusHistory.created_at.desc(), OrderStatusHistory.id.desc())
@@ -493,19 +471,19 @@ def _recent_orders(db: Session, limit: int) -> list[RecentOrder]:
 
 
 def get_dashboard_stats(db: Session):
-    return success(_stats(db, _now()))
+    return success(_stats(db, now_vn()))
 
 
 def get_dashboard_revenue_chart(db: Session, months: int):
-    return success(_revenue_chart(db, _now(), months))
+    return success(_revenue_chart(db, now_vn(), months))
 
 
 def get_dashboard_service_breakdown(db: Session):
-    return success(_service_breakdown(db, _now()))
+    return success(_service_breakdown(db, now_vn()))
 
 
 def get_dashboard_worker_activities(db: Session, limit: int):
-    return success(_worker_activities(db, _now(), limit))
+    return success(_worker_activities(db, now_vn(), limit))
 
 
 def get_dashboard_top_workers(db: Session, limit: int):
@@ -521,7 +499,7 @@ def get_dashboard_recent_orders(db: Session, limit: int):
 
 
 def get_dashboard_overview(db: Session):
-    now = _now()
+    now = now_vn()
     overview = DashboardOverview(
         stats=_stats(db, now),
         revenue_chart=_revenue_chart(db, now, 9),
