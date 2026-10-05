@@ -89,7 +89,10 @@ class Review(Base):
     is_flagged: Mapped[bool] = mapped_column(Boolean, server_default="false")
     flag_reason: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-
+    is_hidden: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    moderated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    moderation_note: Mapped[str | None] = mapped_column(Text)
 
 class Complaint(Base):
     __tablename__ = "complaints"

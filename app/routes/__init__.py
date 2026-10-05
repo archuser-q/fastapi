@@ -7,6 +7,7 @@ from app.routes import (
     health_routes,
     order_admin_routes,
     complaint_admin_routes,
+    review_admin_routes,
 )
 
 api_router = APIRouter()
@@ -16,3 +17,4 @@ api_router.include_router(admin_routes.router)
 api_router.include_router(dashboard_routes.router)
 api_router.include_router(order_admin_routes.router)
 api_router.include_router(complaint_admin_routes.router)
+api_router.include_router(review_admin_routes.router)
