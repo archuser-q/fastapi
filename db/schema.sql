@@ -1,3 +1,27 @@
+DROP TABLE
+    notifications,
+    complaints,
+    warranties,
+    reviews,
+    worker_earnings,
+    payments,
+    messages,
+    worker_location_logs,
+    order_extra_quotes,
+    order_offers,
+    order_status_history,
+    orders,
+    matching_configs,
+    worker_services,
+    services,
+    service_categories,
+    worker_documents,
+    worker_profiles,
+    customer_addresses,
+    device_tokens,
+    social_accounts,
+    users
+CASCADE;
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     phone VARCHAR(15) UNIQUE NOT NULL,
@@ -5,7 +29,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255),
     full_name VARCHAR(150) NOT NULL,
     avatar_url TEXT,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('customer', 'worker', 'admin', 'staff')),
+    role VARCHAR(20) NOT NULL CHECK (role IN ('customer', 'worker', 'admin')),
     status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'blocked', 'pending')),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -209,6 +233,10 @@ CREATE TABLE reviews (
     comment TEXT,
     is_flagged BOOLEAN NOT NULL DEFAULT FALSE,
     flag_reason VARCHAR(255),
+    is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+    moderated_by BIGINT REFERENCES users(id),
+    moderated_at TIMESTAMP,
+    moderation_note TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -252,3 +280,4 @@ CREATE INDEX idx_reviews_worker ON reviews(worker_id);
 CREATE INDEX idx_messages_order ON messages(order_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_location_logs_worker ON worker_location_logs(worker_id);
+
