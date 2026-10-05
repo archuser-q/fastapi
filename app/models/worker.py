@@ -38,3 +38,9 @@ class WorkerDocument(Base):
     reject_reason: Mapped[str | None] = mapped_column(Text)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    
+class WorkerService(Base):
+    __tablename__ = "worker_services"
+
+    worker_id: Mapped[int] = mapped_column(ForeignKey("worker_profiles.user_id"), primary_key=True)
+    service_id: Mapped[int] = mapped_column(ForeignKey("services.id"), primary_key=True)
