@@ -1,4 +1,4 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -7,6 +7,7 @@ from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterReques
 from app.schemas.user import UserOut
 from app.utils.response import success
 from app.utils.security import create_access_token, hash_password, verify_password
+from app.utils.cookies import clear_auth_cookie, set_auth_cookie
 
 
 def register(db: Session, data: RegisterRequest):
@@ -33,7 +34,7 @@ def register(db: Session, data: RegisterRequest):
     return success(UserOut.model_validate(user), "Đăng ký thành công")
 
 
-def login(db: Session, data: LoginRequest):
+def login(db: Session, data: LoginRequest, response: Response):
     user = db.scalar(select(User).where(User.phone == data.phone))
     if not user or not user.password_hash or not verify_password(data.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sai số điện thoại hoặc mật khẩu")
@@ -41,11 +42,15 @@ def login(db: Session, data: LoginRequest):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Tài khoản đã bị khóa")
 
     token = create_access_token(user.id, user.role)
+    set_auth_cookie(response, token)
     return success(
         {"access_token": token, "token_type": "bearer", "user": UserOut.model_validate(user)},
         "Đăng nhập thành công",
     )
 
+def logout(response: Response):
+    clear_auth_cookie(response)
+    return success(message="Đăng xuất thành công")
 
 def get_me(user: User):
     return success(UserOut.model_validate(user))
