@@ -1,4 +1,5 @@
 from app.models.matching import MatchingConfig
+from app.models.notification import Notification
 from app.models.order import (
     Complaint,
     Order,
