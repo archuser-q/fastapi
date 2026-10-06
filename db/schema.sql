@@ -1,28 +1,7 @@
-DROP TABLE
-    notifications,
-    complaints,
-    warranties,
-    reviews,
-    worker_earnings,
-    payments,
-    messages,
-    worker_location_logs,
-    order_extra_quotes,
-    order_offers,
-    order_status_history,
-    orders,
-    matching_configs,
-    worker_services,
-    services,
-    service_categories,
-    worker_documents,
-    worker_profiles,
-    customer_addresses,
-    device_tokens,
-    social_accounts,
-    users
-CASCADE;
+-- Extensions
+CREATE EXTENSION IF NOT EXISTS postgis;
 
+-- Tables
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     phone VARCHAR(15) UNIQUE NOT NULL,
@@ -74,6 +53,7 @@ CREATE TABLE worker_profiles (
     service_radius_km NUMERIC(5,2) NOT NULL DEFAULT 10,
     current_latitude DOUBLE PRECISION,
     current_longitude DOUBLE PRECISION,
+    location geography(Point, 4326),
     geohash VARCHAR(12),
     location_updated_at TIMESTAMP,
     trust_score NUMERIC(5,4) NOT NULL DEFAULT 0,
@@ -128,10 +108,16 @@ CREATE TABLE matching_configs (
     weight_price NUMERIC(4,3) NOT NULL,
     weight_workload NUMERIC(4,3) NOT NULL,
     batch_window_seconds INT,
+    search_radius_km NUMERIC(5,2) NOT NULL DEFAULT 5,
+    max_offers INT NOT NULL DEFAULT 3,
+    offer_timeout_seconds INT NOT NULL DEFAULT 60,
     is_active BOOLEAN NOT NULL DEFAULT FALSE,
     updated_by BIGINT REFERENCES users(id),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_matching_configs_active
+    ON matching_configs (is_active) WHERE is_active;
 
 CREATE TABLE orders (
     id BIGSERIAL PRIMARY KEY,
@@ -274,6 +260,8 @@ CREATE TABLE notifications (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Indexes
+
 CREATE INDEX idx_orders_customer ON orders(customer_id);
 CREATE INDEX idx_orders_worker ON orders(worker_id);
 CREATE INDEX idx_orders_status ON orders(status);
@@ -282,10 +270,7 @@ CREATE INDEX idx_messages_order ON messages(order_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_location_logs_worker ON worker_location_logs(worker_id);
 
-CREATE EXTENSION IF NOT EXISTS postgis;
-
-ALTER TABLE worker_profiles
-    ADD COLUMN IF NOT EXISTS location geography(Point, 4326);
+-- Triggers
 
 CREATE OR REPLACE FUNCTION sync_worker_location() RETURNS trigger AS $$
 BEGIN
@@ -306,3 +291,30 @@ DROP TRIGGER IF EXISTS trg_sync_worker_location ON worker_profiles;
 CREATE TRIGGER trg_sync_worker_location
     BEFORE INSERT OR UPDATE OF current_latitude, current_longitude ON worker_profiles
     FOR EACH ROW EXECUTE FUNCTION sync_worker_location();
+
+-- Reset database schema (use with caution)
+
+DROP TABLE
+    notifications,
+    complaints,
+    warranties,
+    reviews,
+    worker_earnings,
+    payments,
+    messages,
+    worker_location_logs,
+    order_extra_quotes,
+    order_offers,
+    order_status_history,
+    orders,
+    matching_configs,
+    worker_services,
+    services,
+    service_categories,
+    worker_documents,
+    worker_profiles,
+    customer_addresses,
+    device_tokens,
+    social_accounts,
+    users
+CASCADE;
