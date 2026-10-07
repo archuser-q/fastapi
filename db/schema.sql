@@ -291,30 +291,3 @@ DROP TRIGGER IF EXISTS trg_sync_worker_location ON worker_profiles;
 CREATE TRIGGER trg_sync_worker_location
     BEFORE INSERT OR UPDATE OF current_latitude, current_longitude ON worker_profiles
     FOR EACH ROW EXECUTE FUNCTION sync_worker_location();
-
--- Reset database schema (use with caution)
-
-DROP TABLE
-    notifications,
-    complaints,
-    warranties,
-    reviews,
-    worker_earnings,
-    payments,
-    messages,
-    worker_location_logs,
-    order_extra_quotes,
-    order_offers,
-    order_status_history,
-    orders,
-    matching_configs,
-    worker_services,
-    services,
-    service_categories,
-    worker_documents,
-    worker_profiles,
-    customer_addresses,
-    device_tokens,
-    social_accounts,
-    users
-CASCADE;
