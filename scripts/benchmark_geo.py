@@ -1,29 +1,3 @@
-"""Đo hiệu năng tìm thợ theo vị trí: có và không có chỉ mục không gian GiST.
-
-Chạy:  python -m scripts.benchmark_geo
-Tùy chọn:
-  --sizes 1000,10000,100000   các cỡ dữ liệu (số thợ)
-  --queries 50                số lần tìm mỗi cỡ dữ liệu
-  --radius 5                  bán kính tìm (km)
-  --limit 50                  số thợ gần nhất cần lấy ở kịch bản 3
-  --csv ket_qua.csv           ghi thêm kết quả ra file CSV để vẽ biểu đồ
-
-Script dùng bảng TẠM (TEMP TABLE), tự xóa khi kết thúc, không đụng vào dữ liệu thật.
-
-Ba kịch bản:
-  1. Vùng cố định: rải thợ trong bán kính 30 km. Thợ càng nhiều thì càng dày,
-     số kết quả tăng theo số thợ (giữ nguyên như phiên bản trước để so sánh).
-  2. Mật độ không đổi: vùng rải mở rộng theo số thợ, mỗi lần tìm luôn trả về
-     khoảng 30 thợ. Kịch bản này cho thấy đặc tính O(log n) của chỉ mục.
-  3. Lấy N thợ gần nhất: giống câu truy vấn trong find_nearby_workers
-     (lọc trong bán kính, sắp xếp từ gần đến xa, LIMIT), trên dữ liệu của kịch bản 1.
-
-Ba cách được so sánh trong mỗi kịch bản:
-  A. Công thức Haversine trên hai cột lat/lng, không chỉ mục
-  B. PostGIS nhưng tắt chỉ mục, buộc quét toàn bảng
-  C. PostGIS dùng chỉ mục GiST
-"""
-
 import argparse
 import csv
 import math
@@ -159,7 +133,6 @@ def run_methods(conn, sqls: dict, params: list[dict], ordered: bool):
     assert [normalize(r) for r in b_res] == [normalize(r) for r in c_res], (
         "Kết quả có chỉ mục khác không chỉ mục"
     )
-    # Haversine (hình cầu) và PostGIS (ellipsoid) có thể lệch vài điểm sát mép bán kính
     mismatch = sum(len(set(a) ^ set(c)) for a, c in zip(a_res, c_res))
     found = statistics.mean(len(r) for r in c_res)
     return a_ms, b_ms, c_ms, found, mismatch

@@ -1,24 +1,3 @@
-"""Thuật toán ghép thợ.
-
-Bước 1, lọc ứng viên: geo_service.find_nearby_workers dùng chỉ mục GiST của PostGIS,
-lấy thợ đã duyệt, đang trực tuyến, làm dịch vụ đó, trong bán kính tìm kiếm.
-
-Bước 2, chấm điểm: mỗi ứng viên có 4 điểm thành phần trong khoảng [0, 1]:
-
-  distance  = 1 - d / R                d: khoảng cách tới khách, R: bán kính tìm
-  trust     = trust_score              điểm tin cậy của thợ
-  price     = min(1, max(0, 2 - r))    r: tỉ lệ trung bình giá chốt / giá gốc của thợ
-                                       trong 90 ngày (r <= 1 được 1 điểm, r >= 2 được 0).
-                                       Thợ chưa có đơn hoàn thành nhận 0,5 (trung tính)
-  workload  = 1 - min(a, 3) / 3        a: số đơn thợ đang làm dở
-
-  Điểm tổng = w_distance*distance + w_trust*trust + w_price*price + w_workload*workload
-  với 4 trọng số lấy từ matching_configs, tổng bằng 1, nên điểm tổng cũng nằm trong [0, 1].
-
-Xếp hạng theo điểm tổng giảm dần, bằng điểm thì ưu tiên thợ gần hơn.
-Chế độ tức thời: max_offers thợ đứng đầu nhận offer cùng lúc.
-"""
-
 from dataclasses import dataclass
 from datetime import timedelta
 

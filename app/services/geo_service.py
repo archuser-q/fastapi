@@ -1,9 +1,3 @@
-"""Tìm thợ ở gần bằng chỉ mục không gian PostGIS.
-
-Đây là bước 1 (lọc ứng viên) của thuật toán ghép thợ. Bước 2 (chấm điểm theo
-matching_configs) dùng lại distance_km trả về ở đây, không phải tính lại.
-"""
-
 from datetime import datetime
 
 from sqlalchemy import text
