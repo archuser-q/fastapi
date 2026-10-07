@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir --default-timeout=120 --retries 10 -r requirement
 
 COPY app ./app
 COPY scripts ./scripts
+COPY db ./db
 
 EXPOSE 8000
 
