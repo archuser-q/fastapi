@@ -1,3 +1,4 @@
+from app.models.communication import Message, Warranty
 from app.models.matching import MatchingConfig
 from app.models.notification import Notification
 from app.models.order import (
