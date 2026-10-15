@@ -65,3 +65,4 @@ logs/
 
 # Docker (Nếu có file mount tạm hoặc override)
 docker-compose.override.yml
+media/

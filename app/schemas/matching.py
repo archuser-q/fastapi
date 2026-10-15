@@ -39,7 +39,8 @@ class MatchingConfigItem(BaseModel):
 
 class MatchingConfigCreate(Weights):
     name: str = Field(min_length=2, max_length=100)
-    mode: Literal["instant", "batch"]
+    # instant: Greedy theo đợt · batch: Hungarian theo lô · auto: hybrid, mỗi nhịp tự chọn theo mức tranh chấp thợ
+    mode: Literal["instant", "batch", "auto"]
     batch_window_seconds: int | None = Field(default=None, ge=5, le=600)
     search_radius_km: float = Field(default=5, gt=0, le=50)
     max_offers: int = Field(default=3, ge=1, le=20)
@@ -49,7 +50,7 @@ class MatchingConfigCreate(Weights):
     def check_batch(self):
         if self.mode == "batch" and not self.batch_window_seconds:
             raise ValueError("Chế độ ghép theo lô cần thời gian gom đơn (batch_window_seconds)")
-        if self.mode == "instant":
+        if self.mode in ("instant", "auto"):  # auto xét theo nhịp điều phối, không dùng cửa sổ lô
             self.batch_window_seconds = None
         return self
 
@@ -89,7 +90,7 @@ class RankedWorker(BaseModel):
     rank: int
     worker_id: int
     full_name: str
-    phone: str
+    phone: str | None
     availability: str
     distance_km: float
     active_orders: int

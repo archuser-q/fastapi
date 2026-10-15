@@ -7,7 +7,7 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    phone: str
+    phone: str | None
     email: str | None
     full_name: str
     avatar_url: str | None

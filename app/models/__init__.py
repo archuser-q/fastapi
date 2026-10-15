@@ -1,3 +1,4 @@
+from app.models.communication import Message, Warranty
 from app.models.matching import MatchingConfig
 from app.models.notification import Notification
 from app.models.order import (
@@ -13,3 +14,12 @@ from app.models.order import (
 from app.models.payment import Payment, WorkerEarning
 from app.models.user import CustomerAddress, DeviceToken, SocialAccount, User
 from app.models.worker import WorkerDocument, WorkerProfile, WorkerService
+from app.models.worker_app import (
+    OrderDispatch,
+    OrderPhoto,
+    PasswordResetCode,
+    WalletTransaction,
+    WorkerBankAccount,
+    WorkerLocationLog,
+    WorkerWithdrawal,
+)

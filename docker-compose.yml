@@ -1,31 +1,79 @@
+# Chạy backend + CSDL:   docker compose up -d --build        -> API + Swagger: http://localhost:8000/docs
+# Thợ ảo tự nhận đơn (demo nhiều thợ):  docker compose --profile bots up -d
+# Không bắt buộc có file .env: mọi biến đều có giá trị mặc định cho môi trường demo.
+# Muốn đổi (VD bật đăng nhập Google), copy .env.example thành .env rồi sửa.
+# App thợ (thư mục worker-app) chạy riêng bằng docker compose của nó, tự gọi API ở cổng 8000.
+name: tho-nhanh-backend
+
 services:
   db:
     image: postgis/postgis:16-3.4
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-thonhanh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-thonhanh}
+      POSTGRES_DB: ${POSTGRES_DB:-thonhanh}
+      TZ: Asia/Ho_Chi_Minh
+      PGTZ: Asia/Ho_Chi_Minh
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-thonhanh} -d ${POSTGRES_DB:-thonhanh}"]
       interval: 5s
-      retries: 10
+      retries: 20
 
   api:
     build: .
-    command: sh -c "python -m db.seed_dashboard && python -m db.seed_worker_locations && uvicorn app.main:app --host 0.0.0.0 --port 8000"
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    image: tho-nhanh/api:latest
+    environment: &api-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-thonhanh}:${POSTGRES_PASSWORD:-thonhanh}@db:5432/${POSTGRES_DB:-thonhanh}
+      JWT_SECRET: ${JWT_SECRET:-doi-chuoi-bi-mat-nay-truoc-khi-chay-that-0123456789}
+      DEBUG: ${DEBUG:-true}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://localhost:5173","http://localhost:8081","http://localhost:8082"]}
+      # Cho phép web chạy trên mọi IP LAN (điện thoại/máy khác trong cùng Wi-Fi)
+      CORS_ORIGIN_REGEX: ${CORS_ORIGIN_REGEX:-^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$$}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      MEDIA_DIR: /app/media
+      # Đăng nhập Google / Facebook (để trống = ẩn nút trên app)
+      GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:-}
+      GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID:-}
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID:-}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+      # Email quên mật khẩu (để trống: mã in ra log + trả về khi DEBUG=true)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      LOCATION_MAX_AGE_MINUTES: ${LOCATION_MAX_AGE_MINUTES:-10}
+    volumes:
+      - media:/app/media
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Thợ ảo: bật N thợ seed sẵn quanh Hồ Gươm, tự nhận đơn và làm đến khi xong (profile "bots")
+  bots:
+    profiles: ["bots"]
+    image: tho-nhanh/api:latest
+    build: .
+    command: ["python", "-m", "scripts.worker_bots", "--count", "${BOT_COUNT:-8}", "--accept", "${BOT_ACCEPT:-0.85}"]
+    environment:
+      <<: *api-env
+      DISPATCHER_ENABLED: "false"
+    depends_on:
+      api:
+        condition: service_healthy
+    stop_grace_period: 15s
 
 volumes:
   pgdata:
+  media:

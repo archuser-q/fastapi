@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 class ComplaintPerson(BaseModel):
     id: int
     full_name: str
-    phone: str
+    phone: str | None
     role: str
     avatar_url: str | None
 

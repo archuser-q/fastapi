@@ -11,6 +11,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    Integer,
     func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -65,6 +66,8 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Thêm bởi migration 003: thợ xác nhận đã kiểm tra an toàn điện (ngắt nguồn, thử điện, bảo hộ) lúc bắt đầu sửa
+    safety_checked_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class OrderStatusHistory(Base):
@@ -119,6 +122,11 @@ class OrderOffer(Base):
     status: Mapped[str] = mapped_column(String(20), server_default="sent")
     sent_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     responded_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Thêm bởi migration 002 (app thợ / điều phối)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    round: Mapped[int] = mapped_column(Integer, server_default="1")
+    mode: Mapped[str | None] = mapped_column(String(20))
+    reason: Mapped[str | None] = mapped_column(Text)
 
 class OrderExtraQuote(Base):
     __tablename__ = "order_extra_quotes"

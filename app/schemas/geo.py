@@ -18,7 +18,7 @@ class LocationOut(BaseModel):
 class NearbyWorker(BaseModel):
     worker_id: int
     full_name: str
-    phone: str
+    phone: str | None
     availability: str
     trust_score: float
     service_radius_km: float
