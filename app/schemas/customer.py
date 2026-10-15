@@ -122,7 +122,7 @@ class CancelRequest(BaseModel):
 class OrderWorkerBrief(BaseModel):
     id: int
     full_name: str
-    phone: str
+    phone: str | None
     avatar_url: str | None
     trust_score: float
     review_count: int

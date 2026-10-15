@@ -14,7 +14,10 @@ from app.routes import (
     matching_admin_routes,
     notification_routes,
     order_admin_routes,
+    order_photo_routes,
     review_admin_routes,
+    upload_routes,
+    withdrawal_admin_routes,
     worker_app_routes,
 )
 
@@ -30,6 +33,7 @@ api_router.include_router(complaint_admin_routes.router)
 api_router.include_router(review_admin_routes.router)
 api_router.include_router(catalog_admin_routes.router)
 api_router.include_router(matching_admin_routes.router)
+api_router.include_router(withdrawal_admin_routes.router)
 
 # App thợ
 api_router.include_router(worker_app_routes.router)
@@ -42,3 +46,5 @@ api_router.include_router(customer_order_routes.router)
 # Dùng chung
 api_router.include_router(chat_routes.router)
 api_router.include_router(notification_routes.router)
+api_router.include_router(upload_routes.router)
+api_router.include_router(order_photo_routes.router)

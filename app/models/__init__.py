@@ -14,3 +14,12 @@ from app.models.order import (
 from app.models.payment import Payment, WorkerEarning
 from app.models.user import CustomerAddress, DeviceToken, SocialAccount, User
 from app.models.worker import WorkerDocument, WorkerProfile, WorkerService
+from app.models.worker_app import (
+    OrderDispatch,
+    OrderPhoto,
+    PasswordResetCode,
+    WalletTransaction,
+    WorkerBankAccount,
+    WorkerLocationLog,
+    WorkerWithdrawal,
+)

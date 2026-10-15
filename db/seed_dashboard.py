@@ -20,17 +20,34 @@ from app.models import (
     WorkerDocument,
     WorkerEarning,
     WorkerProfile,
+    WorkerService,
 )
 from app.utils.dates import now_vn
 from app.utils.security import hash_password
 
 random.seed(42)
 
+# Nhóm chốt chỉ làm mảng THỢ ĐIỆN -> danh mục mẫu chỉ gồm dịch vụ điện (giá tham chiếu, đơn vị)
 CATEGORIES = {
-    "Điện": [("Sửa ổ cắm", 150000), ("Lắp đèn", 200000), ("Sửa aptomat", 250000)],
-    "Nước": [("Sửa vòi nước", 150000), ("Thông tắc bồn cầu", 300000)],
-    "Điện lạnh": [("Vệ sinh điều hòa", 250000), ("Nạp gas điều hòa", 450000), ("Sửa tủ lạnh", 400000)],
-    "Đồ gia dụng": [("Sửa máy giặt", 350000), ("Sửa bình nóng lạnh", 300000)],
+    "Sửa chữa điện": [
+        ("Sửa chập điện, mất điện", 250000, "lần"),
+        ("Sửa ổ cắm, công tắc", 150000, "điểm"),
+        ("Sửa quạt điện", 150000, "cái"),
+    ],
+    "Lắp đặt điện": [
+        ("Lắp đèn LED, đèn trang trí", 120000, "bộ"),
+        ("Lắp quạt trần", 300000, "cái"),
+        ("Đi dây điện mới", 400000, "lần"),
+        ("Lắp ổ cắm, công tắc mới", 100000, "điểm"),
+    ],
+    "Cầu dao & tủ điện": [
+        ("Thay aptomat, cầu dao", 200000, "cái"),
+        ("Lắp đặt tủ điện", 500000, "tủ"),
+    ],
+    "An toàn điện": [
+        ("Kiểm tra an toàn điện", 250000, "lần"),
+        ("Chống giật, đo rò điện", 300000, "lần"),
+    ],
 }
 FLOW = ["matched", "accepted", "on_the_way", "arrived", "in_progress", "completed"]
 LAST_NAMES = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Vũ", "Đặng", "Bùi"]
@@ -52,15 +69,15 @@ def main():
         pw = hash_password("12345678")
 
         if not db.scalar(select(User).where(User.phone == "0900000000")):
-            db.add(User(phone="0900000000", full_name="Quản trị viên", password_hash=pw, role="admin"))
+            db.add(User(phone="0900000000", email="admin@thonhanh.vn", full_name="Quản trị viên", password_hash=pw, role="admin"))
 
         services = []
         for cat_name, items in CATEGORIES.items():
             cat = ServiceCategory(name=cat_name)
             db.add(cat)
             db.flush()
-            for svc_name, price in items:
-                svc = Service(category_id=cat.id, name=svc_name, base_price=Decimal(price))
+            for svc_name, price, unit in items:
+                svc = Service(category_id=cat.id, name=svc_name, base_price=Decimal(price), unit=unit)
                 db.add(svc)
                 services.append(svc)
         db.flush()
@@ -101,6 +118,11 @@ def main():
             if status == "approved":
                 workers.append(u)
         db.flush()
+
+        # Kỹ năng của thợ (thiếu bảng này thì thuật toán ghép cặp không tìm được ai vì lọc theo dịch vụ)
+        for w in workers:
+            for svc in random.sample(services, k=random.randint(4, len(services))):
+                db.add(WorkerService(worker_id=w.id, service_id=svc.id))
 
         db.add(MatchingConfig(
             name="Mặc định", mode="instant", weight_distance=Decimal("0.4"),

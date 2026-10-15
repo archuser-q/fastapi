@@ -9,6 +9,7 @@ from app.controllers.customer_order_controller import get_own_order, order_total
 from app.models import Order, Payment, Service, User
 from app.schemas.customer import MyPaymentItem, PaymentCreate, PaymentOut
 from app.services.notification_service import notify
+from app.services.worker_service import record_paid_order
 from app.utils.dates import now_vn
 from app.utils.response import paginated, success
 
@@ -47,7 +48,7 @@ def create_payment(db: Session, customer: User, order_id: int, data: PaymentCrea
     p = Payment(order_id=o.id, amount=amount, method=data.method, status="pending")
     db.add(p)
     if data.method == "cash":
-        notify(db, o.worker_id, "Khách chọn trả tiền mặt", f"Đơn #{o.id}: thu {amount:,}đ", "payment", o.id)
+        notify(db, o.worker_id, "Khách chọn trả tiền mặt", f"Đơn #{o.id}: thu {amount:,}đ".replace(",", "."), "payment", o.id)
     db.commit()
     db.refresh(p)
 
@@ -76,7 +77,9 @@ def sandbox_confirm(db: Session, customer: User, payment_id: int):
     p.paid_at = now_vn()
     p.transaction_code = f"SANDBOX-{uuid.uuid4().hex[:12].upper()}"
     o = db.get(Order, p.order_id)
-    notify(db, o.worker_id, "Khách đã thanh toán", f"Đơn #{o.id}: {int(p.amount):,}đ", "payment", o.id)
+    notify(db, o.worker_id, "Khách đã thanh toán", f"Đơn #{o.id}: {int(p.amount):,}đ".replace(",", "."), "payment", o.id)
+    # (thành viên B) Ghi thu nhập của thợ + cộng tiền thực nhận vào ví thợ
+    record_paid_order(db, o, p)
     db.commit()
     db.refresh(p)
     return success(_out(p), "Thanh toán thành công")

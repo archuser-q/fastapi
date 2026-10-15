@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
@@ -34,6 +35,7 @@ from app.schemas.customer import (
     WarrantyItem,
     WorkerPublicProfile,
 )
+from app.services import dispatch_service, worker_service
 from app.services.notification_service import notify
 from app.utils.dates import VN_TZ, now_vn
 from app.utils.pagination import paginate
@@ -187,8 +189,14 @@ def create_order(db: Session, customer: User, data: OrderCreate):
     add_history(db, order, "pending", customer.id)
     db.commit()
 
-    # MATCHING_HOOK: khi có thuật toán, gọi ở đây (instant: tạo offer ngay;
-    # batch: đưa vào hàng đợi theo batch_window_seconds).
+    # MATCHING_HOOK (thành viên B): đưa đơn vào bộ điều phối ghép cặp.
+    # instant: gửi đợt offer đầu tiên ngay; batch: chờ lượt Hungarian kế tiếp.
+    # Lỗi điều phối không làm hỏng việc tạo đơn — bộ điều phối nền sẽ thử lại.
+    try:
+        dispatch_service.start_dispatch(db, order.id)
+    except Exception:
+        db.rollback()
+        logging.getLogger("thonhanh.dispatch").exception("Không bắt đầu điều phối được đơn #%s", order.id)
 
     return get_order(db, customer, order.id, message="Đã tạo yêu cầu sửa chữa")
 
@@ -322,6 +330,8 @@ def cancel_order(db: Session, customer: User, order_id: int, data: CancelRequest
         .values(status="expired", responded_at=now_vn())
     )
     notify(db, o.worker_id, "Khách đã huỷ đơn", f"Đơn #{o.id}: {data.reason}", "order_cancelled", o.id)
+    # (thành viên B) Thợ đang giữ đơn này thì tính lại trạng thái rảnh/bận
+    worker_service.refresh_availability(db, o.worker_id)
     db.commit()
     return success({"id": o.id, "status": o.status}, "Đã huỷ đơn")
 
@@ -370,7 +380,7 @@ def respond_extra_quote(db: Session, customer: User, order_id: int, quote_id: in
         db,
         q.worker_id,
         "Khách đã duyệt báo giá" if approve else "Khách từ chối báo giá",
-        f"Đơn #{o.id}: {q.description} ({int(q.amount):,}đ)",
+        f"Đơn #{o.id}: {q.description} (" + f"{int(q.amount):,}đ".replace(",", ".") + ")",
         "extra_quote",
         o.id,
     )

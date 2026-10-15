@@ -44,6 +44,7 @@ from app.utils.dates import (
     percent_change,
     prev_window,
 )
+from app.services.notification_service import notify
 from app.utils.pagination import paginate
 from app.utils.response import paginated, success
 
@@ -143,6 +144,13 @@ def review_document(db: Session, reviewer: User, document_id: int, data: ReviewD
     doc.reject_reason = data.reject_reason if data.status == "rejected" else None
     doc.reviewed_by = reviewer.id
     doc.reviewed_at = func.now()
+    if data.status == "rejected":  # (thành viên B) báo thợ để tải lại giấy tờ trên app
+        notify(db, doc.worker_id, "Giấy tờ chưa hợp lệ", f"Lý do: {data.reject_reason}. Vui lòng tải lại trên app.", "verification", doc.id)
+    elif data.status == "approved":
+        # (thành viên B) thợ đã được duyệt gửi ảnh cập nhật (VD CCCD mới) -> báo đã duyệt ảnh mới
+        profile = db.get(WorkerProfile, doc.worker_id)
+        if profile and profile.verification_status == "approved":
+            notify(db, doc.worker_id, "Đã duyệt giấy tờ mới", "Ảnh giấy tờ bạn gửi cập nhật đã được duyệt.", "verification", doc.id)
     db.commit()
     db.refresh(doc)
     return success(WorkerDocumentOut.model_validate(doc), "Đã cập nhật giấy tờ")
@@ -172,6 +180,11 @@ def update_worker_verification(db: Session, worker_id: int, data: WorkerVerifica
     profile.verification_status = data.status
     if data.status != "approved":
         profile.availability = "offline"
+    # (thành viên B) báo kết quả xét duyệt cho thợ
+    if data.status == "approved":
+        notify(db, worker_id, "Hồ sơ đã được duyệt 🎉", "Bạn có thể bật nhận đơn và bắt đầu làm việc.", "verification", worker_id)
+    else:
+        notify(db, worker_id, "Hồ sơ chưa được duyệt", "Vui lòng xem lại giấy tờ bị từ chối và gửi lại hồ sơ.", "verification", worker_id)
 
     db.commit()
     db.refresh(profile)

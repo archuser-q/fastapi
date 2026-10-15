@@ -24,6 +24,8 @@ class WorkerProfile(Base):
     review_count: Mapped[int] = mapped_column(Integer, server_default="0")
     completed_orders: Mapped[int] = mapped_column(Integer, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    # Thêm bởi migration 002: lúc thợ bấm "Gửi hồ sơ xét duyệt"
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class WorkerDocument(Base):
